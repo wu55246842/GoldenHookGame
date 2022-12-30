@@ -1,5 +1,5 @@
 
-import {pk,ik} from  "./conf/pk"
+import {hidden} from  "./conf/pk"
 require('dotenv').config();
 
 const HDWalletProvider = require('@truffle/hdwallet-provider');  // @notice - Should use new module.
@@ -8,7 +8,7 @@ const mnemonic = process.env.MNEMONIC;
 module.exports = {
   networks: {
     bsc_testnet: {
-      provider: () => new HDWalletProvider(pk, "https://data-seed-prebsc-1-s1.binance.org:8545"),
+      provider: () => new HDWalletProvider(hidden.pk, "https://data-seed-prebsc-1-s1.binance.org:8545"),
       network_id: 97,
       confirmations: 10,
       timeoutBlocks: 200,
@@ -29,7 +29,7 @@ module.exports = {
       skipDryRun: true
     },
     goerli: {
-      provider: () => new HDWalletProvider(pk, "https://goerli.infura.io/v3/"+ik),
+      provider: () => new HDWalletProvider(pk, "https://goerli.infura.io/v3/"+hidden.ik),
       network_id: 5,
       gas: 7500000,
       gasPrice: 5000000000, // 5 gwei,

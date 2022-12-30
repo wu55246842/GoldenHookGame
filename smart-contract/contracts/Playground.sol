@@ -98,9 +98,8 @@ contract Playground is VRFConsumerBaseV2, ConfirmedOwner{
     mapping(uint => uint256) public cardSequences; //游戏数量计数器为ID  卡牌数量为ID 卡牌值
     mapping(uint => mapping(uint=> address)) public playerSequences; //游戏数量计数器为ID  卡牌数量为ID 卡牌值
 
-
-    uint256 public constant SECONDS_IN_DAY = 3_600 * 24;
-    uint256 public constant EXPIRE_TERM = 10 * SECONDS_IN_DAY; //10天过期
+    uint256 public unitValue = 100000000000000; //0.001
+    uint256 public minValue = 100000000000000000; //0.1
 
     //0x2B8fF854c5e16cF35B9A792390Cc3a2a60Ec9ba2 bnb test
     //0x7af963cF6D228E564e2A0aA0DdBF06210B38615D goerli ethereum
@@ -114,8 +113,22 @@ contract Playground is VRFConsumerBaseV2, ConfirmedOwner{
     function deposit() payable public {
     }
 
-    function withdraw() payable onlyOwner notAddress(msg.sender) public {
+    function withdraw() payable public onlyOwner notAddress(msg.sender)  {
          payable(msg.sender).transfer(address(this).balance);
+    }
+
+    function setUnitValue(uint256 _amount) public onlyOwner{
+        unitValue = _amount;
+    }
+
+    function setMinValue(uint256 _amount) public onlyOwner{
+        minValue = _amount;
+    }
+
+    function playerWithdraw() payable public notAddress(msg.sender){
+        require(playerReward[msg.sender]>0,"The address do not have rewards");
+        require(SafeMath.mul(100000000000000, playerReward[msg.sender]) >minValue,"Not enough money to withdraw");
+        payable(msg.sender).transfer(SafeMath.mul(100000000000000, playerReward[msg.sender]));
     }
 
 
