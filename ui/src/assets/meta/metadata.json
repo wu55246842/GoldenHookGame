@@ -1,0 +1,13 @@
+{
+    "name": "这是一个测试NFT的名称",
+    "description": "这是NFT的描述内容,在OpenSea上支持markdown语法",
+    "image": "https://www.web3dapp.club/uploads/20220626/6916f29a0f32901b3dd5a80e3f025048.png",
+    "attributes": [
+        {
+            "trait_type": "Platform",
+            "value": "NFT Market"
+        }
+    ],
+    "publicationDate": "2022-06-30T20:47:39.986Z",
+    "platform": "NFT Market"
+}
