@@ -184,7 +184,7 @@ contract Playground is VRFConsumerBaseV2, ConfirmedOwner{
     }
 
     function buyCards(uint32 _num) external payable notAddress(msg.sender){
-        require(_num<=30,"Limit exceeded");
+        require(_num>=10 &&_num<=30,"Limit >=10 and <=30");
         require(msg.value >= SafeMath.mul(_num,1000000000000000),"coin is not enough");
         requestRandomWords(_num);
         //uint amount = _num * 1000000000000000; //0.001eth
@@ -193,6 +193,7 @@ contract Playground is VRFConsumerBaseV2, ConfirmedOwner{
     }
 
     function buyCards2(uint _num) external notAddress(msg.sender){
+        require(_num>=10 &&_num<=30,"Limit >=10 and <=30");
         playerOwnCards[msg.sender] = playerOwnCards[msg.sender]*(10**(2*_num)) + _random(10**(2*_num),1);
     }
 
@@ -207,7 +208,8 @@ contract Playground is VRFConsumerBaseV2, ConfirmedOwner{
 
     function _outCard() private notAddress(msg.sender) returns(uint){
         uint len = uintLenth(playerOwnCards[msg.sender]);
-        require(len>0 && SafeMath.mod(len,2) == 0,"No card exist");
+        require(len>=2,"Must keep at list one card");
+        require(SafeMath.mod(len,2) == 0,"No card exist");
 
         uint outCard = lastNDigital(playerOwnCards[msg.sender],2);
         playerOwnCards[msg.sender] /= 100;
