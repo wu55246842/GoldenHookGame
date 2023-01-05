@@ -6,6 +6,7 @@ pragma solidity ^0.8.0;
 // import "@chainlink/contracts/src/v0.8/ConfirmedOwner.sol";
 // import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 
+import "./Interfaces/IGame.sol";
 import "./Utils/Interfaces/VRFCoordinatorV2Interface.sol";
 import "./Utils/VRFConsumerBaseV2.sol";
 import "./Utils/ConfirmedOwner.sol";
@@ -16,15 +17,9 @@ import "./Utils/SafeMath.sol";
 import "./Utils/Math.sol";
 
 
-contract Playground is VRFConsumerBaseV2, ConfirmedOwner{
+contract Playground is IGame, VRFConsumerBaseV2, ConfirmedOwner{
 
     using SafeMath for uint256;
-
-    modifier notAddress(address _useAdd){
-        require(_useAdd != address(0), "address is error");
-        _;
-    }
-
 
     //*---     预言机     ---*/
     struct RequestStatus {
@@ -39,12 +34,15 @@ contract Playground is VRFConsumerBaseV2, ConfirmedOwner{
     // Your subscription ID.
     uint64 s_subscriptionId;
     // past requests Id.
-    uint256[] private requestIds;
+    uint256[] internal requestIds;
 
     // The gas lane to use, which specifies the maximum gas price to bump to.
     // For a list of available gas lanes on each network,
     // see https://docs.chain.link/docs/vrf/v2/subscription/supported-networks/#configurations
-    bytes32 keyHash = 0x79d3d8832d904592c0bf9818b621522c988bb8b0c05cdc3b15aea1b6e8db0c15;
+    //bytes32 keyHash = 0x79d3d8832d904592c0bf9818b621522c988bb8b0c05cdc3b15aea1b6e8db0c15; //goerli
+    //bytes32 keyHash = 0xd4bb89654db74673a187bd804519e65e3f71a52bc55f11da7601a13dcf505314;  //bnbtest
+
+    bytes32 keyHash;
 
     // Depends on the number of requested values that you want sent to the
     // fulfillRandomWords() function. Storing each word costs about 20,000 gas,
@@ -63,16 +61,15 @@ contract Playground is VRFConsumerBaseV2, ConfirmedOwner{
 
     /**
      * HARDCODED FOR GOERLI
-     * COORDINATOR: 0x2Ca8E0C643bDe4C2E08ab1fA0da3401AdAD7734D
+     * COORDINATOR: 0x2Ca8E0C643bDe4C2E08ab1fA0da3401AdAD7734D  //goerli
+     * COORDINATOR: 0x6A2AAd07396B36Fe02a22b33cf443582f682c82f //bnbtest
      */
 
 
     //*---     预言机 END   ---*/
 
     
-    event E_RequestSent(uint256 requestId, bool b);
-    event E_RequestFulfilled(uint256 requestId, bool b);
-    event E_Buycard(address buyer,uint32 cardNumber,uint256 amount);
+    
 
     struct GameInfo {
         uint256 startAt;
@@ -82,6 +79,8 @@ contract Playground is VRFConsumerBaseV2, ConfirmedOwner{
 
 
     IERC20 public immutable token;
+    uint256 public userId;
+    mapping(address=>uint256) public users;
     uint public tableId; // 游戏数量计数器
 
     mapping(address => uint256) private playerOwnCards; //所有的玩家和手上的牌，必须是有牌的玩家
@@ -98,125 +97,120 @@ contract Playground is VRFConsumerBaseV2, ConfirmedOwner{
     mapping(uint => uint256) public cardSequences; //游戏数量计数器为ID  卡牌数量为ID 卡牌值
     mapping(uint => mapping(uint=> address)) public playerSequences; //游戏数量计数器为ID  卡牌数量为ID 卡牌值
 
-    uint256 public unitValue = 100000000000000; //0.001
-    uint256 public minValue = 100000000000000000; //0.1
+    uint256 public unitValue = 10000000000000000; //0.01
+    uint256 public minWithdrawValue  = 300000000000000000; //0.3
+
+    string public constant AUTHORS = "@wu55246842::Laowudi";
 
     //0x2B8fF854c5e16cF35B9A792390Cc3a2a60Ec9ba2 bnb test
     //0x7af963cF6D228E564e2A0aA0DdBF06210B38615D goerli ethereum
-
-    // constructor(address _token,address vrfCoordinator) VRFConsumerBaseV2(vrfCoordinator){
-    //     token = IERC20(_token);
-    //     _launch(msg.sender); //发布合约的时候，发布合约的地址（owner）创建第一个游戏
-    // }
 
 
     function deposit() payable public {
     }
 
-    function withdraw() payable public onlyOwner notAddress(msg.sender)  {
-         payable(msg.sender).transfer(address(this).balance);
+    function withdraw() payable public onlyOwner{
+        require(msg.sender != address(0), "address is error");
+        payable(msg.sender).transfer(address(this).balance);
     }
 
     function setUnitValue(uint256 _amount) public onlyOwner{
         unitValue = _amount;
     }
 
-    function setMinValue(uint256 _amount) public onlyOwner{
-        minValue = _amount;
+    function setminWithdrawValue(uint256 _amount) public onlyOwner{
+        minWithdrawValue = _amount;
     }
 
-    function playerWithdraw() payable public notAddress(msg.sender){
+    function playerWithdraw() payable external virtual override{
+        require(msg.sender != address(0), "address is error");
         require(playerReward[msg.sender]>0,"The address do not have rewards");
-        require(SafeMath.mul(100000000000000, playerReward[msg.sender]) >minValue,"Not enough money to withdraw");
-        payable(msg.sender).transfer(SafeMath.mul(100000000000000, playerReward[msg.sender]));
+        require(SafeMath.mul(unitValue, playerReward[msg.sender]) >minWithdrawValue,"Not enough money to withdraw");
+        payable(msg.sender).transfer(SafeMath.mul(unitValue, playerReward[msg.sender]));
     }
 
 
+    constructor(address _token,
+                address _vrfCoordinator,
+                bytes32 _keyHash,
+                uint64 _subscriptionId) VRFConsumerBaseV2(_vrfCoordinator) ConfirmedOwner(msg.sender){
 
-    /**
-     * HARDCODED FOR GOERLI
-     * COORDINATOR: 0x2Ca8E0C643bDe4C2E08ab1fA0da3401AdAD7734D
-     */
-    
-    constructor(uint64 subscriptionId) VRFConsumerBaseV2(0x2Ca8E0C643bDe4C2E08ab1fA0da3401AdAD7734D) ConfirmedOwner(msg.sender){
-        //owner = msg.sender;
-        token = IERC20(0x7af963cF6D228E564e2A0aA0DdBF06210B38615D);
+        token = IERC20(_token);
+        keyHash = _keyHash;
+        COORDINATOR = VRFCoordinatorV2Interface(_vrfCoordinator);
+        s_subscriptionId = _subscriptionId;
 
-        COORDINATOR = VRFCoordinatorV2Interface(0x2Ca8E0C643bDe4C2E08ab1fA0da3401AdAD7734D);
-        s_subscriptionId = subscriptionId;
+        //first user is owner
+        userId +=1;
+        users[msg.sender] = userId;
 
         for(uint i=0;i<10;i++){
-            _launch(msg.sender,i.add(1)); //发布合约的时候，发布合约的地址（owner）创建第一个游戏
+            _launch(i.add(1)); //发布合约的时候，发布合约的地址（owner）创建第一个游戏
         }
         
     }
 
 
-    function _launch(address _creator,uint _seed) internal notAddress(_creator){
+    function launch(uint _seed) external virtual override{
+        _launch(_seed);
+    }
+
+    function _launch(uint _seed) onlyOwner private{
+        require(msg.sender != address(0), "address is error");
         tableId += 1; //count 作为每个游戏的ID
         //游戏信息
         allGames[tableId] = GameInfo({
             startAt:block.timestamp,
             isExist:true,
-            creator:_creator
+            creator:msg.sender
         });
         //出牌序列，出第一张牌
         cardCount[tableId] =1;
-        playerSequences[tableId][cardCount[tableId]] = _creator;
+        playerSequences[tableId][cardCount[tableId]] = msg.sender;
         cardSequences[tableId] = _random(100,_seed);
     }
 
-    // function _cancel(uint _tableId) internal notAddress(msg.sender){
-    //     require(allGames[_tableId].creator == msg.sender,"only creator can cancel the game");
-    //     require(playerSequences[_tableId][1] != address(0),"the game stll have other players");
-    //     require(cardSequences[_tableId] > 0,"the game stll have other players");
-    //     delete allGames[_tableId];
-    //     for(uint i=1 ;i<=cardCount[_tableId];i++){
-    //         delete playerSequences[_tableId][i];
-    //         delete cardSequences[_tableId];
-    //     }
-    //     delete cardCount[_tableId];
-        
-    // }
 
-    function lanuchTable() public onlyOwner notAddress(msg.sender){
-        _launch(msg.sender,1);
-    }
-
-    function buyCards(uint32 _num) external payable notAddress(msg.sender){
+    function buyCards(uint _num) external payable{
+        require(msg.sender != address(0), "address is error");
         require(_num>=10 &&_num<=30,"Limit >=10 and <=30");
-        require(msg.value >= SafeMath.mul(_num,1000000000000000),"coin is not enough");
+        require(msg.value >= SafeMath.mul(_num,unitValue),"coin is not enough");
         requestRandomWords(_num);
-        //uint amount = _num * 1000000000000000; //0.001eth
-        //token.transferFrom(msg.sender, address(this),amount);
-        emit E_Buycard(msg.sender,_num,msg.value);
     }
 
-    function buyCards2(uint _num) external notAddress(msg.sender){
+    function buyCards2(uint _num) external{
+        require(msg.sender != address(0), "address is error");
         require(_num>=10 &&_num<=30,"Limit >=10 and <=30");
         playerOwnCards[msg.sender] = playerOwnCards[msg.sender]*(10**(2*_num)) + _random(10**(2*_num),1);
+        if(users[msg.sender]!=0){
+            userId +=1;
+            users[msg.sender] = userId;
+        }
     }
 
-    function playingCard(uint _tableId) external notAddress(msg.sender){
+    function playingCard(uint _tableId) external virtual override{
+        require(msg.sender != address(0), "address is error");
         require(cardSequences[_tableId] > 0, "Game not exist");
         require(playerSequences[_tableId][1] != address(0), "Game not exist");
         require(SafeMath.mod(uintLenth(playerOwnCards[msg.sender]),2)==0,"Length must be even");
-        uint out = _outCard();
+        uint out = _outCard(_tableId);
         _checkWin(_tableId, out);
        
     }
 
-    function _outCard() private notAddress(msg.sender) returns(uint){
+    function _outCard(uint _tableId) internal returns(uint){
+        require(msg.sender != address(0), "address is error");
         uint len = uintLenth(playerOwnCards[msg.sender]);
         require(len>=2,"Must keep at list one card");
         require(SafeMath.mod(len,2) == 0,"No card exist");
 
         uint outCard = lastNDigital(playerOwnCards[msg.sender],2);
         playerOwnCards[msg.sender] /= 100;
+        emit E_Outcard(msg.sender,outCard, _tableId);
         return outCard;
     }
 
-    function _checkWin(uint _tableId,uint _out) public{
+    function _checkWin(uint _tableId,uint _out) internal{
         require(cardCount[_tableId]>0,"No card exist");
         require(cardSequences[_tableId]>0 && SafeMath.mod(uintLenth(cardSequences[tableId]),2)==0,"No card exist");
         require(SafeMath.mod(uintLenth(playerOwnCards[msg.sender]),2)==0,"Length must be even");
@@ -236,7 +230,7 @@ contract Playground is VRFConsumerBaseV2, ConfirmedOwner{
 
     
 
-    function _win(uint _tableId,uint _out) public view returns(bool,uint){
+    function _win(uint _tableId,uint _out) internal view returns(bool,uint){
         require(cardCount[_tableId]>0,"No card exist");
         require(cardSequences[_tableId]>0 && SafeMath.mod(uintLenth(cardSequences[tableId]),2)==0,"No card exist");
         require(SafeMath.mod(uintLenth(playerOwnCards[msg.sender]),2)==0,"Length must be even");
@@ -260,18 +254,20 @@ contract Playground is VRFConsumerBaseV2, ConfirmedOwner{
         return (isWin,matchSeq);
     }
 
-    function _reward(uint _tableId, uint _matchSeq) internal notAddress(msg.sender){
-        require(cardCount[_tableId] > 0,"No card exist");
+    function _reward(uint _tableId, uint _matchSeq) internal{
+        require(msg.sender != address(0), "address is error");
+        uint cc = cardCount[_tableId];
+        require(cc > 0,"No card exist");
         require(cardSequences[_tableId] > 0,"No card exist");
         require(playerSequences[_tableId][1] != address(0),"No players involved");
-        require(cardCount[_tableId]>=_matchSeq,"");
+        require(cc>=_matchSeq,"");
 
         uint remainCount =  SafeMath.sub(_matchSeq, 1) ;
-        uint rewardCount =  SafeMath.sub(cardCount[_tableId], _matchSeq).add(1); //没有算出的那张牌，留给合约作为付费
+        uint rewardCount =  SafeMath.sub(cc, _matchSeq).add(1); //没有算出的那张牌，留给合约作为付费
         uint divisor = 10**(SafeMath.mul(rewardCount, 2));
 
         
-        for(uint i=_matchSeq;i<=cardCount[_tableId];i++){
+        for(uint i=_matchSeq;i<=cc;i++){
            delete playerSequences[_tableId][i];
         }
 
@@ -283,14 +279,14 @@ contract Playground is VRFConsumerBaseV2, ConfirmedOwner{
             cardSequences[_tableId] /= divisor;
         }
         playerReward[msg.sender] += rewardCount;
+
+        emit E_PlayerReward(msg.sender,rewardCount,_tableId);
         
     }
 
 
-
-    //预言机
-    // Assumes the subscription is funded sufficiently.
-    function requestRandomWords(uint _num) private notAddress(msg.sender) returns(uint256 requestId){
+    function requestRandomWords(uint _num) private returns(uint256 requestId){
+        require(msg.sender != address(0), "address is error");
         // Will revert if subscription is not set and funded.
         requestId = COORDINATOR.requestRandomWords(
             keyHash,
@@ -323,8 +319,22 @@ contract Playground is VRFConsumerBaseV2, ConfirmedOwner{
         uint lastNumDigital = lastNDigital(_randomWords[0], SafeMath.mul(num,2));
         playerOwnCards[buyer] =SafeMath.add(SafeMath.mul(playerOwnCards[buyer],10** SafeMath.mul(num,2)) , lastNumDigital) ;
 
+        if(users[buyer]!=0){
+            userId +=1;
+            users[buyer] = userId;
+        }
+
         s_requests[_requestId].fulfilled = true;
         emit E_RequestFulfilled(_requestId, true);
+        emit E_Buycard(buyer,num);
+        uint256 t_amount = SafeMath.mul(num,unitValue);
+        if(token.totalSupply()>=t_amount){
+            token.transfer(buyer, t_amount);
+            emit E_ReceiveToken(buyer,t_amount);
+        }else{
+            emit E_ReceiveToken(buyer,0);
+        }
+        
     }
 
 
@@ -338,7 +348,7 @@ contract Playground is VRFConsumerBaseV2, ConfirmedOwner{
     //     }
     // }
 
-    function playerOwnCardsCounts() external view returns(uint){
+    function playerOwnCardsCounts() external view virtual override returns(uint){
         if(playerOwnCards[msg.sender] == 0){
             return 0;
         }
@@ -347,14 +357,29 @@ contract Playground is VRFConsumerBaseV2, ConfirmedOwner{
         return SafeMath.div(len,2);
     }
 
-    function lastNDigital(uint256 _value,uint n) private pure returns(uint){
+    function lastNDigital(uint256 _value,uint n) internal pure returns(uint){
         require(uintLenth(_value)>=n ,"require number is too long");
         return SafeMath.mod(_value, 10**n);
     } 
 
-    function uintLenth(uint256 _value) private pure returns(uint){
+    function uintLenth(uint256 _value) internal pure returns(uint){
         require(_value > 0,"no value");
         return Math.log10(_value) + 1;
+    }
+
+    uint256 public constant EAA_PM_START = 100;
+    uint256 public constant EAA_PM_STEP = 1;
+    uint256 public constant EAA_RANK_STEP = 100_000;
+
+    function _calculateEAARate() internal view returns (uint256) {
+        // EAA_PM_STEP = 1
+        // EAA_RANK_STEP = 100000
+        uint256 decrease = (EAA_PM_STEP * userId) / EAA_RANK_STEP;
+        // EAA_PM_START = 100
+        // 也就是说，如果参与人数大于 1000 万，返回 0
+        if (decrease > EAA_PM_START) return 0;
+        // 否则返回 100 - 人数 / 100000
+        return EAA_PM_START - decrease;
     }
 
    
@@ -379,11 +404,15 @@ contract Playground is VRFConsumerBaseV2, ConfirmedOwner{
         return  SafeMath.mod(SafeMath.div(uint256(randomBytes), _seed), _number);  
     }
 
-     
+    
+
 
     function testMsgSender() public view returns(address){
         return msg.sender;
     }
 
+    function testTokenTransfer(uint _num) payable public{
+        token.transfer(msg.sender, SafeMath.mul(_num,unitValue));
+    }
 
 }

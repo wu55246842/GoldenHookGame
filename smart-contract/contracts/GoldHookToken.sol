@@ -6,14 +6,21 @@ import { ERC20 } from "./Utils/ERC20.sol";
 
 contract GoldHookToken is ERC20, Ownable {
 
+    uint private supplyTime = 1;
+
     constructor() ERC20("Golden Hood Token", "GHT") {
-        uint initialSupply = 1e11 * 1e18;  /// 1 billion   1e8 * 1e18 1 million
+        uint initialSupply = 1e8 * 1e18;
         address initialReceiver = msg.sender;
+        require(supplyTime == 1,"can not supply anymore!");
         _mint(initialReceiver, initialSupply);
+        supplyTime -= 1;
     }    
 
     function mint(address to, uint mintAmount) public onlyOwner{
-        _mint(to, mintAmount);    
+        require(supplyTime == 1,"can not supply anymore!");
+        uint256 supply = mintAmount * 1e18;
+        _mint(to, supply); 
+        supplyTime -= 1;
     }
 
 }

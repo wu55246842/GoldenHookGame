@@ -6,7 +6,14 @@ const HDWalletProvider = require('@truffle/hdwallet-provider');  // @notice - Sh
 
 module.exports = {
   networks: {
-    bsc_testnet: {
+    bscTest: {
+      // https://data-seed-prebsc-1-s1.binance.org:8545/
+      // https://data-seed-prebsc-2-s1.binance.org:8545/
+      // https://data-seed-prebsc-1-s2.binance.org:8545/
+      // https://data-seed-prebsc-2-s2.binance.org:8545/
+      // https://data-seed-prebsc-1-s3.binance.org:8545/
+      // https://data-seed-prebsc-2-s3.binance.org:8545/
+      networkCheckTimeout: 999999,
       provider: () => new HDWalletProvider(secret.mnemonic, "https://data-seed-prebsc-1-s1.binance.org:8545"),
       network_id: 97,
       confirmations: 10,
@@ -36,7 +43,7 @@ module.exports = {
       //from: process.env.DEPLOYER_ADDRESS
     },
     // main ethereum network(mainnet)
-    live: {
+    mainnet: {
       provider: () => new HDWalletProvider(secret.mnemonic, "https://mainnet.infura.io/v3/" + process.env.INFURA_KEY),
       network_id: 1,
       gas: 5500000,
@@ -53,7 +60,7 @@ module.exports = {
   compilers: {
     solc: {
       version: "pragma",
-      //version: "0.5.16",  /// Final version of solidity-v0.5.x
+      //version: "0.8.0",  
       settings: {
         optimizer: {
           enabled: true,

@@ -1,7 +1,7 @@
 {
-  "name": "tokenized-carbon-credit-wrapped-NFT-marketplace",
+  "name": "GoldenHookGame",
   "version": "1.0.0",
-  "description": "Tokenized carbon credit wrapped NFT marketplace",
+  "description": "GoldenHookGame",
   "main": "index.js",
   "scripts": {
     "test": "truffle test ./test/*",
