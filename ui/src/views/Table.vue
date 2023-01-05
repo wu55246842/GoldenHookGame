@@ -1,10 +1,11 @@
 <template>
     <div class="bg">
 
-        <div class="loader" v-if="loading"></div>
+        
 
     
         <section class="single-blog-wrap-layout1" v-if="cardCount>0">
+            <div class="loader" v-if="loading"></div>
             <div class="single-blog-banner-layout1">
                 <!-- <div class="banner-img">
                     <img src="../assets/img/blog/blog208.jpg" alt="banner"/>
@@ -18,7 +19,7 @@
                 </ul>
 
                 <div class="pt10" align="center" v-if="playerOwnCardsCounts.length>0">
-                    <h3><span style="color: white;font-weight: bold;">Your Cards Total : {{ playerOwnCardsCounts.length }}</span></h3>
+                    <h3><span class="h3span">Your Cards Total : {{ playerOwnCardsCounts.length }}</span></h3>
                 </div>
 
                 <ul class="cards" v-if="playerOwnCardsCounts.length>0">
@@ -26,14 +27,17 @@
                     </li>
                 </ul>
                 <div class="pt-5" align="center" v-else>
-                    <h3 style="color:darkmagenta;font-weight: 600;">You do not own the car, please draw</h3>
+                    <h3 class="h3span">You do not own the car, please draw</h3>
                 </div>
 
                 <div class="pt-5" align="center">
                     <el-button type="primary" @click="openDialog">Draw</el-button>
                     <el-button type="primary" @click="playingCards">Playing Cards</el-button>
-                    <el-button type="primary" @click="rewards">Rewards</el-button>
+                    <el-button type="primary" @click="myRewards">My Rewards</el-button>
                     <el-button type="primary" @click="test">Test</el-button>
+                </div>
+                <div class="pt-3" align="center">
+                    <h3><span class="h3span">My Rewards: {{rewards*unitValue}} {{ chainSymbol }}</span></h3>
                 </div>
                     
             </div>
@@ -47,14 +51,14 @@
                     <span class="margin-right: 1rem">Number Want To Draw :</span>
                 </el-row>
                 <el-row>
-                    <el-input-number v-model="numOfCards" @change="handleChange" :min="1" :max="30" placeholder="number of cards"></el-input-number>
+                    <el-input-number v-model="numOfCards" @change="handleChange" :min="10" :max="30" placeholder="number of cards"></el-input-number>
                 </el-row>
                 <el-row>
-                    <span class="margin-right: 1rem">You Need Pay : {{ unit }}</span>
+                    <span class="margin-right: 1rem">You Need Pay : {{ chainSymbol }}</span>
                 </el-row>
                 <el-row>
                     <el-input v-model="cardsValue" :min="1" :max="30" placeholder="you need pay" :disabled="true">
-                        <template slot="append">{{unit}}</template>
+                        <template slot="append">{{chainSymbol}}</template>
                     </el-input>
                 </el-row>
                 <div class="pt-5"></div>
@@ -77,7 +81,7 @@
 
 
 import commonMixin from "@/utils/commonMixin.js"
-
+import CommonFunction from '../utils/commonFunction'
 
 
 export default({
@@ -88,17 +92,21 @@ export default({
     data() {
         return{
             loading:true,
-            unit:'ETH',
+            chainSymbol:'',
+            rewards:0,
             playground:null,
             id:null,
             playerSequences:null,
             cardSequences:null,
             cardCount:0,
             playerOwnCardsCounts:[],
-            numOfCards:1,
-            cardsValue:0.001,
+            numOfCards:10,
+            cardsValue:null,
             title:'Draw Cards',
             dialogVisible:false,
+            unitValue:null,
+            minWithdrawValue:null,
+            networkConfig:null
         }
         
     },
@@ -108,6 +116,13 @@ export default({
         if(window.connectedAddress){
             this.playground = await Contract.Playground
             await this.init()
+            if(this.playground){
+                this.unitValue = await this.playground.unitValue()
+                this.minWithdrawValue = await this.playground.minWithdrawValue()
+                this.networkConfig = await CommonFunction.getCurrentNetwork()
+                this.chainSymbol = this.networkConfig.chainSymbol
+                this.cardsValue = this.numOfCards*this.unitValue/1000000000000000000
+            }
         }
     },
 
@@ -135,7 +150,6 @@ export default({
             if(this.playground && this.id){
                 this.loading = true
                 let c = await this.playground.playerOwnCardsCounts()
-                console.log('-------------- playerOwnCardsCounts --------------',this.playerOwnCardsCounts)
                 this.playerOwnCardsCounts = []
                 for(let m =0;m<c;m++){
                     this.playerOwnCardsCounts.push(m+1)
@@ -146,13 +160,12 @@ export default({
                 this.cardSequences = []
                 str = str+''
 
-                console.log('-------------str--------------',str)
-
                 for(let i = 0;i<this.cardCount;i++){
 
                     this.cardSequences.push(str.substr(i*2,2))
                 }
-                console.log('-------------cardSequences--------------',this.cardSequences)
+
+                this.myRewards()
                 
                 this.loading = false
             }
@@ -172,11 +185,17 @@ export default({
 
         async draw(){
             if(this.playground){
-                if(window.connectedAddress && window.web3.eth){
+                if(window.connectedAddress && this.unitValue){
                     setTimeout(() => {
                         this.dialogVisible = false
                     }, 15000)
-                    await this.playground.methods.buyCards2(this.numOfCards).send({from:window.connectedAddress})
+                    //await this.playground.methods.buyCards2(this.numOfCards).send({from:window.connectedAddress})
+                    await this.playground.methods.buyCards(this.numOfCards).send(
+                        {
+                            from:window.connectedAddress,
+                            value:window.web3.utils.toWei((this.numOfCards*this.unitValue/1000000000000000000) + '', 'ether')
+                        }
+                    )
                     let c = await this.playground.playerOwnCardsCounts()
                     this.playerOwnCardsCounts = []
                     for(let m =0;m<c;m++){
@@ -186,9 +205,8 @@ export default({
             }
         },
 
-        async rewards(){
-            let rewards = await this.playground.playerReward(window.connectedAddress)
-            console.log('------------rewards-----------',rewards)
+        async myRewards(){
+            this.rewards = await this.playground.playerReward(window.connectedAddress)
         },
 
         openDialog(){
@@ -197,11 +215,12 @@ export default({
 
         closeDialog(){
             this.dialogVisible = false
-            this.numOfCards = 1
+            this.numOfCards = 10
         },
         handleChange(){
-            if(this.numOfCards>0){
-                this.cardsValue = this.numOfCards*0.001
+            console.log(this.unitValue)
+            if(this.numOfCards>=10 && this.unitValue){
+                this.cardsValue = this.numOfCards*this.unitValue/1000000000000000000
             }
         },
 
@@ -209,13 +228,10 @@ export default({
 
         async test(){
             if(this.playground){
-                let result1 = await this.playground.methods.testMsgSender().call({from:window.connectedAddress})
-                console.log('----------testMsgSender-------------',result1)
-
-                let result2 = await this.playground.testMsgSender()
-                console.log('----------testMsgSender-------------',result2)
-
-                console.log('----------this.playground-------------',this.playground)
+                //await this.playground.methods.setUnitValue(1000000000000000).send({from:window.connectedAddress})
+                //const val = await this.playground.getPlayerOwnCards()
+                //console.log('----------getPlayerOwnCards----------',val)
+                await this.playground.methods.withdraw().send({from:window.connectedAddress})
             }
         }
 
@@ -224,6 +240,10 @@ export default({
 </script>
 
 <style scoped>
+    .h3span{
+        color: white;
+        font-weight: bold;
+    }
 
     .el-dialog-div{
         height: 260vh;

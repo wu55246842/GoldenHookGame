@@ -59,20 +59,11 @@ export default {
             if(window.connectedAddress){
 
                 const playground = await Contract.Playground
-                const GoldHookToken = await Contract.GoldHookToken
+                const goldHookToken = await Contract.GoldHookToken
 
                 console.log('---------playground----------',playground)
 
-                const owner = await playground.owner()
-                console.log('-------------------',owner)
-
-                const tableId = await playground.tableId()
-                console.log('-------------------',tableId)
-
-                const allGames = await playground.allGames(1)
-                console.log('-------------------',allGames)
-
-                const bal = await GoldHookToken.balanceOf(window.connectedAddress)
+                const bal = await goldHookToken.balanceOf(window.connectedAddress)
                 console.log('---------- current user bal ---------',bal)
 
             }else{

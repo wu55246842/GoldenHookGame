@@ -15,7 +15,7 @@
 <script>
 
 import commonMixin from "../utils/commonMixin.js"
-import CommonFunc from "../utils/commonFunction.js"
+
 
 export default {
     mixins:[commonMixin],

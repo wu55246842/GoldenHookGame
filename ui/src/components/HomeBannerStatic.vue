@@ -18,7 +18,7 @@
                                 <p class="sub-heading">i'm always waiting for you</p>
                                 <div class="button-slider">
                                     <router-link to="/playground" class="sc-button"><span>Enter Dapp</span></router-link>
-                                    <router-link to="/publish" class="sc-button"><span>About Us</span></router-link>
+                                    <router-link to="/about" class="sc-button"><span>About Us</span></router-link>
                                 </div>
                             </div>
                         </div>

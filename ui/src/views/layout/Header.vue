@@ -86,7 +86,6 @@
     import SocialShareBlock from '../../components/SocialShare'
     import Wallet from '../../components/wallet'
     import TaskView from '@/components/task'
-    import category from "@/config/category"
 
     export default {
         name: 'AppHeader',
@@ -98,7 +97,6 @@
         data() {
             return {
                 showSearch: false,
-                categories :category.categories,
             }
         },
         methods: {

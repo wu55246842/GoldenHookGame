@@ -4,11 +4,11 @@ import WalletConfig from "../config/wallet";
 import { getCurrentInstance } from "vue";
 import store from '../store'
 import Contract from './contract'
-import CommonFunc from "@/utils/commonFunction";
+import CommonFunction from "@/utils/commonFunction";
 import eventBus from '@/utils/eventBus'
 
 async function connect(flag){
-    const networkConfig = await CommonFunc.getCurrentNetwork()
+    const networkConfig = await CommonFunction.getCurrentNetwork()
     const providerOptions = WalletConfig.providerOptions;
     console.log('providerOptions',providerOptions)
     for(let i in providerOptions){

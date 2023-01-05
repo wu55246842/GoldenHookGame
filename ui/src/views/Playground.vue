@@ -10,7 +10,6 @@
 
 <script>
 import commonMixin from "@/utils/commonMixin.js"
-import { async } from "q"
 import PersonalListBlock from '../components/PersonalList'
 
 export default {
@@ -22,6 +21,7 @@ export default {
             testResult: null,
             testResultSend: null,
             dataList:[],
+            playground:null
         }
     },
     mounted(){
@@ -30,17 +30,11 @@ export default {
     methods: {
         async initData(){
             // TODO
-            const playground = await Contract.Playground
-            const GoldHookToken = await Contract.GoldHookToken
+            this.playground = await Contract.Playground
 
-            if(playground && GoldHookToken){
+            if(this.playground){
             
-                if(this.$store.state.currentAccount){
-                    const bal = await GoldHookToken.balanceOf(this.$store.state.currentAccount)
-                    console.log('---------- current user bal ---------',bal)
-                }
-                const tableId = await playground.tableId()
-                console.log('---------- current game count ---------',tableId)
+                const tableId = await this.playground.tableId()
 
                 let a = []
                 for (var x=0 ; x<tableId; x++)
@@ -48,14 +42,11 @@ export default {
                     a.push(x+1)
                 }
 
-                console.log('---------a----------',a)
                 a.forEach(async idx=>{
-                    console.log('foreach',idx)
-                    let game = await playground.allGames(idx)
+                    let game = await this.playground.allGames(idx)
                     this.dataList.push(game)  
                 })
 
-                console.log('---------------dataList-----------------',this.dataList)
             }
         },
     }

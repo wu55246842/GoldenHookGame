@@ -4,36 +4,44 @@
             connect
         </div>
         <div class="my-wallet" @click="showWallet" v-else>
-            {{CommonFunc.formatString(currentAccount, 4, 4)}}
+            {{CommonFunction.formatString(currentAccount, 4, 4)}}
         </div>
 
         <div class="wallet-dialog" v-if="showDialog">
             <div class="my-address">
                 <i v-if="currentAccount">
                     {{currentAccount.substring(0, 6)}} ... {{currentAccount.substring(currentAccount.length-6)}}
+                    <a class="disconnect-btn" @click="disconnect">DISCONNECT</a>
                 </i>
                 <i v-else>...</i>
+
                 <div class="close-btn" @click="showDialog = false">
                     <svg t="1656154938278" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="2196" width="200" height="200"><path d="M544.448 499.2l284.576-284.576a32 32 0 0 0-45.248-45.248L499.2 453.952 214.624 169.376a32 32 0 0 0-45.248 45.248l284.576 284.576-284.576 284.576a32 32 0 0 0 45.248 45.248l284.576-284.576 284.576 284.576a31.904 31.904 0 0 0 45.248 0 32 32 0 0 0 0-45.248L544.448 499.2z" p-id="2197"></path></svg>
                 </div>
             </div>
+            <div class="balance-value">
+                <label>Contract {{chainSymbol}} Balance:</label>
+                <span>{{contractBalance}}</span>
+            </div>
+            <div class="balance-value">
+                <label>Contract GHToken Balance:</label>
+                <span>{{contractGhtBalance}}</span>
+            </div>
             <div class="balance-value" v-if="chainSymbol">
-                <label>{{chainSymbol}} Balance:</label>
+                <label>Your {{chainSymbol}} Balance:</label>
                 <span>{{balance}}</span>
             </div>
             <div class="balance-value">
-                <label>GoldHookToken Balance:</label>
+                <label>Your GHToken Balance:</label>
                 <span>{{ghTokenBalance}}</span>
             </div>
-            <div class="balance-value">
-                <label>USDT Balance:</label>
-                <span>{{usdtBalance}}</span>
-            </div>
-            <div class="balance-value">
+            
+            
+            <!-- <div class="balance-value">
                 <label>Task:</label>
                 <task-view></task-view>
-            </div>
-            <div class="disconnect-btn" @click="disconnect">DISCONNECT</div>
+            </div> -->
+            
         </div>
         <div class="wallet-dialog-mask" v-if="showDialog" @click="showDialog = false"></div>
     </div>
@@ -41,9 +49,10 @@
 
 <script>
     import WalletUtil from '../utils/wallet'
-    import CommonFunc from '../utils/commonFunction'
+    import CommonFunction from '../utils/commonFunction'
     import eventBus from '@/utils/eventBus'
     import TaskView from '@/components/task'
+    // import Contract from '@/utils/contract'
 
     export default {
         name: 'Wallet',
@@ -53,14 +62,15 @@
         data() {
             return {
                 WalletUtil,
-                CommonFunc,
+                CommonFunction,
                 isTask: false,
                 showDialog: false,
                 balance: 0,
                 chainSymbol: null,
                 refreshing: false,
-                ghTokenBalance: 0,
-                usdtBalance: 0
+                contractBalance: 0,
+                contractGhtBalance:0,
+                ghTokenBalance: 0
             }
         },
         computed: {
@@ -82,11 +92,11 @@
         methods:{
             async showWallet(){
                 this.showDialog = true
-                const networkConfig = await CommonFunc.getCurrentNetwork()
+                const networkConfig = await CommonFunction.getCurrentNetwork()
                 if(!networkConfig){
                     console.log('Error 1001: Invalid network configuration')
                 } else {
-                    this.balance = CommonFunc.friendlyBalance(await this.getBalance(), networkConfig.decimals, 4)
+                    this.balance = CommonFunction.friendlyBalance(await this.getBalance(this.currentAccount), networkConfig.decimals, 4)
                     this.chainSymbol = networkConfig.chainSymbol
                 }
                 // other balance
@@ -98,30 +108,41 @@
             },
             async refreshWallet(networkConfig){
                 this.refreshing = true
-                // other balance
-                this.ghTokenBalance = CommonFunc.friendlyBalance(
-                    await Contract.GoldHookToken.balanceOf(this.currentAccount),
-                    await Contract.GoldHookToken.decimals(),
-                    2
+
+                const playground = await Contract.Playground
+                const goldHookToken = await Contract.GoldHookToken
+
+                this.contractBalance = CommonFunction.friendlyBalance(
+                    await this.getBalance(playground.address),
+                    18,
+                    4
                 )
-                this.usdtBalance = CommonFunc.friendlyBalance(
-                    await Contract.USDT.balanceOf(this.currentAccount),
-                    await Contract.USDT.decimals(),
-                    2
+
+                this.contractGhtBalance = CommonFunction.friendlyBalance(
+                    await goldHookToken.balanceOf(playground.address),
+                    18,
+                    4
+                )
+                
+
+                this.ghTokenBalance = CommonFunction.friendlyBalance(
+                    await goldHookToken.balanceOf(this.currentAccount),
+                    18,
+                    4
                 )
                 setTimeout(() => {
                     this.refreshing = false
                 }, 500)
             },
-            async getBalance(){
+            async getBalance(_address){
                 let balance = 0
                 if(window.web3.trx){
-                    balance = await window.web3.trx.getBalance(this.currentAccount);
+                    balance = await window.web3.trx.getBalance(_address);
                 } else {
-                    balance = await window.web3.eth.getBalance(this.currentAccount);
+                    balance = await window.web3.eth.getBalance(_address);
                 }
                 return balance
-            }
+            },
         }
     }
 </script>
@@ -216,17 +237,26 @@
         color: rgb(122, 110, 170);
         display: flex;
     }
+
     .wallet-dialog .balance-value label{
         flex: 1;
     }
+    .wallet-dialog .balance-value span{
+        flex: 0;
+        //flex: 1;
+    }
     .wallet-dialog .disconnect-btn{
         font-size: 12px;
-        line-height: 46px;
+        line-height: 36px;
         color: rgb(122, 110, 170);
         cursor: default;
         position: absolute;
-        bottom: 8px;
         padding-left: 20px;
+    }
+    .disconnect-btn:hover{
+        font-size: 13px;
+        color: antiquewhite;
+        cursor:pointer
     }
     .wallet-dialog-mask{
         position: fixed;

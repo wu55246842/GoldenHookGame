@@ -4,9 +4,10 @@ import UI from '@/utils/ui'
 import eventBus from '@/utils/eventBus'
 import CommonFunction from "@/utils/commonFunction";
 import Task from "@/utils/task";
-import {Decimal} from 'decimal.js'
 
-function loadContract(contractName, contractAddress){
+
+
+function loadContract(contractName, contractAddress, networkRemark){
     if(!window.connectedAddress){
         console.log('Error 1004: Wallet not connected')
         return
@@ -16,8 +17,8 @@ function loadContract(contractName, contractAddress){
         console.log('Error 1002: Web3 is not initialized')
         return
     }
-
-    const abiJson = require("../../../smart-contract/build/contracts/" + contractName + ".json")
+    
+    const abiJson = require("@/assets/build/"+networkRemark+"/contracts/" + contractName + ".json")
     if(!contractAddress){
         console.log('Error 1003: The ' + contractName + ' contract address is not configured')
         return
@@ -44,7 +45,9 @@ async function getAddress(name){
         console.log('Error 1002: Web3 is not initialized')
         return
     }
-    const abiJson = require('../../../smart-contract/build/contracts/' + name + '.json')
+    const networkConfig = await CommonFunction.getCurrentNetwork()
+    const abiJson = require("@/assets/build/"+networkConfig.remark+"/contracts/" + name + '.json')
+    //const abiJson = require("../assets/build/"+"bscTest"+"/contracts/" + name + ".json")
     const networkId = await web3.eth.net.getId()
     const deployedNetwork = abiJson.networks[networkId.toString()]
     return deployedNetwork && deployedNetwork.address
@@ -52,10 +55,10 @@ async function getAddress(name){
 
 async function init(){
     const _Contract = {}
+    const networkConfig = await CommonFunction.getCurrentNetwork()
     for(let k in ContractConfig){
-        // const contractObject = loadContract(k, ContractConfig[k])
         const contractAddress = await getAddress(k)
-        const contractObject = loadContract(k, contractAddress)
+        const contractObject = loadContract(k, contractAddress,networkConfig.remark)
         _Contract[k] = {
             address: contractAddress,
             contractName: k,
@@ -64,7 +67,7 @@ async function init(){
             sendValue: 0
         }
         _Contract[k].atAddress = function(_address) {
-            this.methods = loadContract(k, _address).methods
+            this.methods = loadContract(k, _address,networkConfig.remark).methods
             this._isReset = true
             return this
         }
@@ -72,8 +75,8 @@ async function init(){
             this.sendValue = _value
             return this
         }
-        _Contract[k] = _initMethods(contractObject, _Contract, k)
-        _Contract[k] = _initEvents(contractObject, _Contract, k)
+        _Contract[k] = _initMethods(contractObject, _Contract, k,networkConfig)
+        _Contract[k] = _initEvents(contractObject, _Contract, k,networkConfig)
     }
     Contract = _Contract
     
@@ -81,7 +84,7 @@ async function init(){
     eventBus.$emit('afterInit')
 }
 
-async function _initMethods(contractObject, _Contract, k){
+async function _initMethods(contractObject, _Contract, k ,networkConfig){
     for(let funcName in contractObject.methods){
         if(funcName.indexOf('0x') == 0){
             continue
@@ -94,7 +97,7 @@ async function _initMethods(contractObject, _Contract, k){
             const _func = this.methods[funcName]
             const _params = arguments
             const method = eval(_getMethod(_params))
-            let stateMutability = method._method ? method._method.stateMutability : _getStateMutability(k, funcName)
+            let stateMutability = method._method ? method._method.stateMutability : _getStateMutability(k, funcName,networkConfig.remark)
             stateMutability = stateMutability.toLocaleLowerCase()
             const contractAddress = await getAddress(k)
             if(this._isReset && !CommonFunction.isZeroAddress(contractAddress)){
@@ -189,8 +192,9 @@ function _initEvents(contractObject, _Contract, k){
     return _Contract[k]
 }
 
-function _getStateMutability(contractName, funcName){
-    const abiJson = require("../../../smart-contract/build/contracts/" + contractName + ".json")
+function _getStateMutability(contractName, funcName,networkRemark){
+    // const abiJson = require("@/assets/build/"+networkRemark+"/contracts/" + contractName + ".json")
+    const abiJson = require("../assets/build/"+"bscTest"+"/contracts/" + contractName + ".json")
     let item = null
     for(let i in abiJson){
         if(abiJson[i].name == funcName){
