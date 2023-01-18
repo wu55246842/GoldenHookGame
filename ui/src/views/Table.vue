@@ -34,7 +34,7 @@
                     <el-button type="primary" @click="openDialog">Draw</el-button>
                     <el-button type="primary" @click="playingCards">Playing Cards</el-button>
                     <el-button type="primary" @click="myRewards">My Rewards</el-button>
-                    <el-button type="primary" @click="test">Test</el-button>
+                    <!-- <el-button type="primary" @click="test">Test</el-button> -->
                 </div>
                 <div class="pt-3" align="center">
                     <h3><span class="h3span">My Rewards: {{rewards*unitValue}} {{ chainSymbol }}</span></h3>
@@ -206,7 +206,12 @@ export default({
         },
 
         async myRewards(){
-            this.rewards = await this.playground.playerReward(window.connectedAddress)
+
+
+            let weiVal = await this.playground.playerReward(window.connectedAddress)
+            console.log(weiVal)
+            this.rewards = window.web3.utils.fromWei((weiVal) + '', 'ether')
+            //this.rewards = CommonFunction.friendlyBalance(weiVal,18,4)
         },
 
         openDialog(){
@@ -231,7 +236,12 @@ export default({
                 //await this.playground.methods.setUnitValue(1000000000000000).send({from:window.connectedAddress})
                 //const val = await this.playground.getPlayerOwnCards()
                 //console.log('----------getPlayerOwnCards----------',val)
+                
                 await this.playground.methods.withdraw().send({from:window.connectedAddress})
+
+                //await this.playground.methods.deposit().send({from:window.connectedAddress})
+
+                //await this.playground.methods.playerWithdraw().send({from:window.connectedAddress})
             }
         }
 

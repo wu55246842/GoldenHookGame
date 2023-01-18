@@ -15,11 +15,13 @@ import "./Utils/ConfirmedOwner.sol";
 import "./Utils/Interfaces/IERC20.sol";
 import "./Utils/SafeMath.sol";
 import "./Utils/Math.sol";
+import "./library/GameLibrary.sol";
 
 
 contract Playground is IGame, VRFConsumerBaseV2, ConfirmedOwner{
 
     using SafeMath for uint256;
+    using GameLibrary for uint256;
 
     //*---     预言机     ---*/
     struct RequestStatus {
@@ -85,15 +87,8 @@ contract Playground is IGame, VRFConsumerBaseV2, ConfirmedOwner{
 
     mapping(address => uint256) private playerOwnCards; //所有的玩家和手上的牌，必须是有牌的玩家
     mapping(address => uint256) public playerReward;
-
     mapping(uint => GameInfo) public allGames;  //游戏数量计数器为ID ，记录每个ID的游戏信息
-
-    // mapping(uint => address[]) public playerSequences;  //游戏数量计数器为ID ，记录每个游戏的出牌逻辑
-    // mapping(uint => uint[]) public cardSequences;  //游戏数量计数器为ID ，记录每个游戏的出牌逻辑
-
-
     mapping (uint => uint) public cardCount; //游戏数量计数器为ID  卡牌数量计数器
-    // mapping(uint => mapping(uint=> uint)) public cardSequences; //游戏数量计数器为ID  卡牌数量为ID 卡牌值
     mapping(uint => uint256) public cardSequences; //游戏数量计数器为ID  卡牌数量为ID 卡牌值
     mapping(uint => mapping(uint=> address)) public playerSequences; //游戏数量计数器为ID  卡牌数量为ID 卡牌值
 
@@ -118,7 +113,7 @@ contract Playground is IGame, VRFConsumerBaseV2, ConfirmedOwner{
         unitValue = _amount;
     }
 
-    function setminWithdrawValue(uint256 _amount) public onlyOwner{
+    function setMinWithdrawValue(uint256 _amount) public onlyOwner{
         minWithdrawValue = _amount;
     }
 
@@ -191,8 +186,7 @@ contract Playground is IGame, VRFConsumerBaseV2, ConfirmedOwner{
     function playingCard(uint _tableId) external virtual override{
         require(msg.sender != address(0), "address is error");
         require(cardSequences[_tableId] > 0, "Game not exist");
-        require(playerSequences[_tableId][1] != address(0), "Game not exist");
-        require(SafeMath.mod(uintLenth(playerOwnCards[msg.sender]),2)==0,"Length must be even");
+        require(SafeMath.mod(GameLibrary.uintLenth(playerOwnCards[msg.sender]),2)==0,"Length must be even");
         uint out = _outCard(_tableId);
         _checkWin(_tableId, out);
        
@@ -200,11 +194,11 @@ contract Playground is IGame, VRFConsumerBaseV2, ConfirmedOwner{
 
     function _outCard(uint _tableId) internal returns(uint){
         require(msg.sender != address(0), "address is error");
-        uint len = uintLenth(playerOwnCards[msg.sender]);
+        uint len = GameLibrary.uintLenth(playerOwnCards[msg.sender]);
         require(len>=2,"Must keep at list one card");
         require(SafeMath.mod(len,2) == 0,"No card exist");
 
-        uint outCard = lastNDigital(playerOwnCards[msg.sender],2);
+        uint outCard = GameLibrary.lastNDigital(playerOwnCards[msg.sender],2);
         playerOwnCards[msg.sender] /= 100;
         emit E_Outcard(msg.sender,outCard, _tableId);
         return outCard;
@@ -212,8 +206,8 @@ contract Playground is IGame, VRFConsumerBaseV2, ConfirmedOwner{
 
     function _checkWin(uint _tableId,uint _out) internal{
         require(cardCount[_tableId]>0,"No card exist");
-        require(cardSequences[_tableId]>0 && SafeMath.mod(uintLenth(cardSequences[tableId]),2)==0,"No card exist");
-        require(SafeMath.mod(uintLenth(playerOwnCards[msg.sender]),2)==0,"Length must be even");
+        require(cardSequences[_tableId]>0 && SafeMath.mod(GameLibrary.uintLenth(cardSequences[tableId]),2)==0,"No card exist");
+        require(SafeMath.mod(GameLibrary.uintLenth(playerOwnCards[msg.sender]),2)==0,"Length must be even");
 
         bool isWin;
         uint matchSeq;
@@ -232,16 +226,16 @@ contract Playground is IGame, VRFConsumerBaseV2, ConfirmedOwner{
 
     function _win(uint _tableId,uint _out) internal view returns(bool,uint){
         require(cardCount[_tableId]>0,"No card exist");
-        require(cardSequences[_tableId]>0 && SafeMath.mod(uintLenth(cardSequences[tableId]),2)==0,"No card exist");
-        require(SafeMath.mod(uintLenth(playerOwnCards[msg.sender]),2)==0,"Length must be even");
+        require(cardSequences[_tableId]>0 && SafeMath.mod(GameLibrary.uintLenth(cardSequences[tableId]),2)==0,"No card exist");
+        require(SafeMath.mod(GameLibrary.uintLenth(playerOwnCards[msg.sender]),2)==0,"Length must be even");
 
         bool isWin ;
         uint matchSeq;
-        uint len = uintLenth(cardSequences[_tableId]);
+        uint len = GameLibrary.uintLenth(cardSequences[_tableId]);
         for (uint i=1; i<=cardCount[_tableId]; i++) {
             uint divisor = 10**(len-(i*2));
             uint mach = SafeMath.div(cardSequences[_tableId],divisor);
-            mach = lastNDigital(mach,2);
+            mach = GameLibrary.lastNDigital(mach,2);
             if(mach == _out){
                 isWin = true;
                 matchSeq  = i;
@@ -259,7 +253,6 @@ contract Playground is IGame, VRFConsumerBaseV2, ConfirmedOwner{
         uint cc = cardCount[_tableId];
         require(cc > 0,"No card exist");
         require(cardSequences[_tableId] > 0,"No card exist");
-        require(playerSequences[_tableId][1] != address(0),"No players involved");
         require(cc>=_matchSeq,"");
 
         uint remainCount =  SafeMath.sub(_matchSeq, 1) ;
@@ -316,7 +309,7 @@ contract Playground is IGame, VRFConsumerBaseV2, ConfirmedOwner{
         address buyer = s_requests[_requestId].buyer;
         require(buyer!=address(0),"address is error");
         uint num = s_requests[_requestId].requestNum;
-        uint lastNumDigital = lastNDigital(_randomWords[0], SafeMath.mul(num,2));
+        uint lastNumDigital = GameLibrary.lastNDigital(_randomWords[0], SafeMath.mul(num,2));
         playerOwnCards[buyer] =SafeMath.add(SafeMath.mul(playerOwnCards[buyer],10** SafeMath.mul(num,2)) , lastNumDigital) ;
 
         if(users[buyer]!=0){
@@ -352,20 +345,12 @@ contract Playground is IGame, VRFConsumerBaseV2, ConfirmedOwner{
         if(playerOwnCards[msg.sender] == 0){
             return 0;
         }
-        uint len = uintLenth(playerOwnCards[msg.sender]);
+        uint len = GameLibrary.uintLenth(playerOwnCards[msg.sender]);
         require(SafeMath.mod(len,2) == 0 ,"Length must be even");
         return SafeMath.div(len,2);
     }
 
-    function lastNDigital(uint256 _value,uint n) internal pure returns(uint){
-        require(uintLenth(_value)>=n ,"require number is too long");
-        return SafeMath.mod(_value, 10**n);
-    } 
-
-    function uintLenth(uint256 _value) internal pure returns(uint){
-        require(_value > 0,"no value");
-        return Math.log10(_value) + 1;
-    }
+   
 
     uint256 public constant EAA_PM_START = 100;
     uint256 public constant EAA_PM_STEP = 1;

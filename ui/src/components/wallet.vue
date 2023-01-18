@@ -12,8 +12,11 @@
                 <i v-if="currentAccount">
                     {{currentAccount.substring(0, 6)}} ... {{currentAccount.substring(currentAccount.length-6)}}
                     <a class="disconnect-btn" @click="disconnect">DISCONNECT</a>
+                    <a class="redeem-btn" @click="redeem">REDEEM</a>
+
                 </i>
                 <i v-else>...</i>
+                
 
                 <div class="close-btn" @click="showDialog = false">
                     <svg t="1656154938278" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="2196" width="200" height="200"><path d="M544.448 499.2l284.576-284.576a32 32 0 0 0-45.248-45.248L499.2 453.952 214.624 169.376a32 32 0 0 0-45.248 45.248l284.576 284.576-284.576 284.576a32 32 0 0 0 45.248 45.248l284.576-284.576 284.576 284.576a31.904 31.904 0 0 0 45.248 0 32 32 0 0 0 0-45.248L544.448 499.2z" p-id="2197"></path></svg>
@@ -52,7 +55,7 @@
     import CommonFunction from '../utils/commonFunction'
     import eventBus from '@/utils/eventBus'
     import TaskView from '@/components/task'
-    // import Contract from '@/utils/contract'
+import { async } from 'q'
 
     export default {
         name: 'Wallet',
@@ -70,7 +73,9 @@
                 refreshing: false,
                 contractBalance: 0,
                 contractGhtBalance:0,
-                ghTokenBalance: 0
+                ghTokenBalance: 0,
+                playground:null,
+                goldHookToken:null,
             }
         },
         computed: {
@@ -78,7 +83,18 @@
                 return this.$store.state.currentAccount
             }
         },
-        created() {
+        async created() {
+           
+
+            
+            eventBus.$on('afterInit', async () => {
+                //console.log('-------Contract-------',Contract)
+                this.playground = await Contract.Playground
+                this.goldHookToken = await Contract.GoldHookToken
+                // console.log('-----this.playground----',this.playground)
+                // console.log('-----this.goldHookToken----',this.goldHookToken)
+            })
+
             eventBus.$on('NEW_TASK', () => {
                 this.isTask = true
                 setTimeout(() => {
@@ -100,33 +116,36 @@
                     this.chainSymbol = networkConfig.chainSymbol
                 }
                 // other balance
-                this.refreshWallet(networkConfig)
+                await this.refreshWallet(networkConfig)
+                
             },
             disconnect(){
                 WalletUtil.disconnect()
                 this.showDialog = false
             },
+
+            async redeem(){
+                await this.playground.methods.playerWithdraw().send({from:window.connectedAddress})
+            },
             async refreshWallet(networkConfig){
+
                 this.refreshing = true
 
-                const playground = await Contract.Playground
-                const goldHookToken = await Contract.GoldHookToken
-
                 this.contractBalance = CommonFunction.friendlyBalance(
-                    await this.getBalance(playground.address),
+                    await this.getBalance(this.playground.address),
                     18,
                     4
                 )
 
                 this.contractGhtBalance = CommonFunction.friendlyBalance(
-                    await goldHookToken.balanceOf(playground.address),
+                    await this.goldHookToken.balanceOf(this.playground.address),
                     18,
                     4
                 )
                 
 
                 this.ghTokenBalance = CommonFunction.friendlyBalance(
-                    await goldHookToken.balanceOf(this.currentAccount),
+                    await this.goldHookToken.balanceOf(this.currentAccount),
                     18,
                     4
                 )
@@ -253,11 +272,21 @@
         position: absolute;
         padding-left: 20px;
     }
-    .disconnect-btn:hover{
+    .disconnect-btn .redeem-btn:hover{
         font-size: 13px;
         color: antiquewhite;
         cursor:pointer
     }
+    .wallet-dialog .redeem-btn{
+        font-size: 12px;
+        line-height: 36px;
+        color: rgb(122, 110, 170);
+        cursor: default;
+        position: absolute;
+        padding-left: 120px;
+    }
+   
+
     .wallet-dialog-mask{
         position: fixed;
         top: 0;

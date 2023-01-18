@@ -44,10 +44,13 @@ module.exports = async function(deployer, network, accounts) {
         
     }else if(network == 'bscTest'){
         
-        
+        await playground.setUnitValue(web3.utils.toWei("0.003"), { from: deployerAddress })
+        await playground.setMinWithdrawValue(web3.utils.toWei("0.3"), { from: deployerAddress })
+
     }else if(network == 'goerli'){
-        await playground.setUnitValue(100000000000000, { from: deployerAddress })
-        await playground.setminWithdrawValue(100000000000000000, { from: deployerAddress })
+
+        await playground.setUnitValue(web3.utils.toWei("0.001"), { from: deployerAddress })
+        await playground.setMinWithdrawValue(web3.utils.toWei("0.1"), { from: deployerAddress })
         
     }else if(network == 'mainnet'){
 

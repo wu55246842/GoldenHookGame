@@ -98,7 +98,7 @@ textarea {
    ========================================================================== */
 
 .loader{  /* Loader Div Class */
-    position: fixed;
+    position: relative;
     top: 0px;
     right: 0px;
     width: 100%;

@@ -5,7 +5,7 @@ export default createStore({
         currentAccount: null,
         sharing:{
             url: window.location.href,
-            title: 'LAOWD :Pure Web3 Blog System',
+            title: 'LAOWUDI : P2E GAME',
             description: 'Tribute to the future',
             quote: '',
             hashtags: 'Web3',

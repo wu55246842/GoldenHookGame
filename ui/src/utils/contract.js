@@ -39,14 +39,13 @@ function loadContract(contractName, contractAddress, networkRemark){
     return returnData
 }
 
-async function getAddress(name){
+async function getAddress(name,networkRemark){
     const web3 = window.web3
     if(!web3){
         console.log('Error 1002: Web3 is not initialized')
         return
     }
-    const networkConfig = await CommonFunction.getCurrentNetwork()
-    const abiJson = require("@/assets/build/"+networkConfig.remark+"/contracts/" + name + '.json')
+    const abiJson = require("@/assets/build/"+networkRemark+"/contracts/" + name + '.json')
     //const abiJson = require("../assets/build/"+"bscTest"+"/contracts/" + name + ".json")
     const networkId = await web3.eth.net.getId()
     const deployedNetwork = abiJson.networks[networkId.toString()]
@@ -57,7 +56,7 @@ async function init(){
     const _Contract = {}
     const networkConfig = await CommonFunction.getCurrentNetwork()
     for(let k in ContractConfig){
-        const contractAddress = await getAddress(k)
+        const contractAddress = await getAddress(k,networkConfig.remark)
         const contractObject = loadContract(k, contractAddress,networkConfig.remark)
         _Contract[k] = {
             address: contractAddress,
@@ -99,7 +98,7 @@ async function _initMethods(contractObject, _Contract, k ,networkConfig){
             const method = eval(_getMethod(_params))
             let stateMutability = method._method ? method._method.stateMutability : _getStateMutability(k, funcName,networkConfig.remark)
             stateMutability = stateMutability.toLocaleLowerCase()
-            const contractAddress = await getAddress(k)
+            const contractAddress = await getAddress(k,networkConfig.remark)
             if(this._isReset && !CommonFunction.isZeroAddress(contractAddress)){
                 this.methods = loadContract(k, contractAddress).methods
                 this._isReset = false
